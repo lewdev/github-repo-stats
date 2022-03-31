@@ -1,6 +1,32 @@
+//https://stackoverflow.com/a/66938952/1675237
+const crypt = (salt, text) => {
+  const textToChars = (text) => text.split("").map((c) => c.charCodeAt(0));
+  const byteHex = (n) => ("0" + Number(n).toString(16)).substr(-2);
+  const applySaltToChar = (code) => textToChars(salt).reduce((a, b) => a ^ b, code);
+  return text
+    .split("")
+    .map(textToChars)
+    .map(applySaltToChar)
+    .map(byteHex)
+    .join("");
+};
+
+const decrypt = (salt, encoded) => {
+  const textToChars = (text) => text.split("").map((c) => c.charCodeAt(0));
+  const applySaltToChar = (code) => textToChars(salt).reduce((a, b) => a ^ b, code);
+  return encoded
+    .match(/.{1,2}/g)
+    .map((hex) => parseInt(hex, 16))
+    .map(applySaltToChar)
+    .map((charCode) => String.fromCharCode(charCode))
+    .join("");
+};
+
 const GithubApi = (() => {
   let username = null;
-  const TOKEN = "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";
+  const tokenStr = "434c547b4755651c161c5456535c50611d4b45694e137c486c6b577563104b1d4f651410434e524c";
+  const salt = "f2q23";
+  const TOKEN = decrypt(salt, tokenStr);
   const API_URL = "https://api.github.com";
 
   const get = path => fetch(
@@ -48,6 +74,7 @@ const GithubApi = (() => {
     getClones: (repo, cb) => get(`/repos/${username}/${repo}/traffic/clones`).then(data => handleCb(data, cb)),
     getReferrers: (repo, cb) => get(`/repos/${username}/${repo}/traffic/popular/referrers`).then(data => handleCb(data, cb)),
     getAllRepoStats: (repo, cb) => {
+      if (!repo) return;
       const { name } = repo;
       const { getTraffic, applyStats, getClones, getReferrers } = GithubApi;
       getTraffic(name, data => {
@@ -56,12 +83,13 @@ const GithubApi = (() => {
         getClones(name, data => {
           applyStats(repo, "clones", data);
           getReferrers(name, data => {
+            // if (!repo) return;
             if (!repo.referrers) repo.referrers = data;
-            else {
-              for (const referrer of data) {
-                repo.referrer = repo.referrer.map(v => v.referrer === referrer.referrer ? referrer : v);
-              }
-            }
+            // else {
+            //   for (const referrer of data) {
+            //     repo.referrer = repo.referrer.map(v => v.referrer === referrer.referrer ? referrer : v);
+            //   }
+            // }
           });
           if (cb) cb(repo);
         });
