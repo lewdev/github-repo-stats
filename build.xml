@@ -70,12 +70,6 @@
     </copy>
   </target>
 
-  <target name="zipBuild">
-    <zip destfile="${ant.project.name}.zip">
-      <zipfileset dir="./" includes="www/** config.xml" />
-    </zip>
-  </target>
-
   <target name="i" depends="install-compilers" />
 
   <target name="install-compilers">

@@ -1,38 +1,35 @@
 //https://stackoverflow.com/a/66938952/1675237
-const crypt = (salt, text) => {
-  const textToChars = (text) => text.split("").map((c) => c.charCodeAt(0));
-  const byteHex = (n) => ("0" + Number(n).toString(16)).substr(-2);
-  const applySaltToChar = (code) => textToChars(salt).reduce((a, b) => a ^ b, code);
-  return text
-    .split("")
-    .map(textToChars)
-    .map(applySaltToChar)
-    .map(byteHex)
-    .join("");
-};
-
-const decrypt = (salt, encoded) => {
-  const textToChars = (text) => text.split("").map((c) => c.charCodeAt(0));
-  const applySaltToChar = (code) => textToChars(salt).reduce((a, b) => a ^ b, code);
-  return encoded
-    .match(/.{1,2}/g)
-    .map((hex) => parseInt(hex, 16))
-    .map(applySaltToChar)
-    .map((charCode) => String.fromCharCode(charCode))
-    .join("");
-};
-
 const GithubApi = (() => {
+  // const crypt = (salt, text) => {
+  //   const textToChars = (text) => text.split("").map((c) => c.charCodeAt(0));
+  //   const byteHex = (n) => ("0" + Number(n).toString(16)).substr(-2);
+  //   const applySaltToChar = (code) => textToChars(salt).reduce((a, b) => a ^ b, code);
+  //   return text
+  //     .split("")
+  //     .map(textToChars)
+  //     .map(applySaltToChar)
+  //     .map(byteHex)
+  //     .join("");
+  // };
+
+  const decrypt = (salt, encoded) => {
+    const textToChars = (text) => text.split("").map((c) => c.charCodeAt(0));
+    const applySaltToChar = (code) => textToChars(salt).reduce((a, b) => a ^ b, code);
+    return encoded
+      .match(/.{1,2}/g)
+      .map((hex) => parseInt(hex, 16))
+      .map(applySaltToChar)
+      .map((charCode) => String.fromCharCode(charCode))
+      .join("");
+  };
+
   let username = null;
   const tokenStr = "434c547b4755651c161c5456535c50611d4b45694e137c486c6b577563104b1d4f651410434e524c";
   const salt = "f2q23";
   const TOKEN = decrypt(salt, tokenStr);
   const API_URL = "https://api.github.com";
 
-  const get = path => fetch(
-      `${API_URL}${path}`,
-      {headers: {Authorization: `token ${TOKEN}`}
-    })
+  const get = path => fetch(`${API_URL}${path}`,{headers: {Authorization: `token ${TOKEN}`}})
     .then(r => r.json())
     .then(r => {if (r.message) alert(r.message); return r;})
     .catch(error => err.innerHTML = error)
@@ -79,28 +76,32 @@ const GithubApi = (() => {
       const { getTraffic, applyStats, getClones, getReferrers } = GithubApi;
       getTraffic(name, data => {
         if (!data) return;
-        applyStats(repo, "views", data);
+        applyStats(repo, "views", data, "timestamp");
         getClones(name, data => {
-          applyStats(repo, "clones", data);
+          applyStats(repo, "clones", data, "timestamp");
           getReferrers(name, data => {
-            // if (!repo) return;
-            if (!repo.referrers) repo.referrers = data;
-            // else {
-            //   for (const referrer of data) {
-            //     repo.referrer = repo.referrer.map(v => v.referrer === referrer.referrer ? referrer : v);
-            //   }
-            // }
+            applyStats(repo, "referrers", data, "referrer");
+            handleCb(data, cb);
           });
-          if (cb) cb(repo);
         });
       });
     },
-    applyStats: (repo, attr, data) => {
-      if (!repo[attr]) repo[attr] = data[attr];
+    applyStats: (repo, attr, data, baseAttr) => {
+      const isReferrers = attr === "referrers";
+      const arr = isReferrers ? data : data[attr];
+      if (!repo[attr]) repo[attr] = arr;
       else {
-        //merge data
-        for (const day of data[attr]) {
-          repo[attr] = repo[attr].map(v => v.timestamp === day.timestamp ? day : v);
+        //merge: find and replace or add
+        for (const row of arr) {
+          const found = repo[attr].find(v => v[baseAttr] === row[baseAttr]);
+          if (found) {
+            if (!isReferrers) {
+              row.count += found.count;
+              row.uniques += found.uniques;
+            }
+            repo[attr] = repo[attr].map(v => v[baseAttr] === row[baseAttr] ? row : v);
+          }
+          else repo[attr].push(row);
         }
       }
     }
