@@ -43,7 +43,7 @@
     <exec dir="." executable="cmd" >
       <arg line="/c npx google-closure-compiler"/>
       <arg line="--charset UTF-8"/>
-      <arg line="--compilation_level WHITESPACE_ONLY"/><!-- ADVANCED_OPTIMIZATIONS, SIMPLE_OPTIMIZATIONS, WHITESPACE_ONLY-->
+      <arg line="--compilation_level SIMPLE_OPTIMIZATIONS"/><!-- ADVANCED_OPTIMIZATIONS, SIMPLE_OPTIMIZATIONS, WHITESPACE_ONLY-->
       <arg line="--js ./src/assets/ReposCommon.js"/>
       <arg line="--js ./src/assets/ReposSummary.js"/>
       <arg line="--js ./src/assets/github-api.js"/>
