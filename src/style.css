@@ -2,7 +2,7 @@ html {
   scroll-behavior: smooth;
 }
 body {
-  margin-top: 5rem;
+  margin-bottom: 5rem;
 }
 .text-lg { font-size: 1.5rem; }
 input, textarea, select {
