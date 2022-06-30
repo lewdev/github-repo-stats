@@ -4,7 +4,7 @@
 /repos/:owner/:repo/traffic/views
 /repos/:owner/:repo/traffic/popular/referrers
 */
-const app = (() => {
+window["app"] = (() => {
   const APP_ID = "my-github-stats-data"
   const d = document;
   const loading = d.getElementById("loading");
@@ -18,6 +18,7 @@ const app = (() => {
 
   const createStatsTable = (attr, repo) => {
     const arr = repo[attr];
+    if (!arr) return `No ${attr} data.`;
     //{views: {views: 0, uniques: 0}, clones: {clones: 0, uniques: 0}};
     const overall = arr.reduce((prev, curr) => {
       prev.count += curr.count;
@@ -30,15 +31,20 @@ const app = (() => {
 		return `${header}<details><div class="card mb-3"><table class="table mb-0"><thead><tr>${cols.map(c => `<th>${cap(c)}</th>`).join("")}</thead>
       <tbody>${arr.map(o => `<tr>${cols.map(a => `<td>${o[a]}</td>`).join("")}</tr>`).join("")}</tbody></table></div></details>`;
   };
+
   const isEmpty = arr => !arr || arr.length === 0;
 
   const render = () => {
     const repoList = repos.filter(r => !r.private);
-    left.innerHTML = `<h3 class="mt-4 mb-1 pb-1 border-secondary border-bottom">List</h3><ul>${repoList.map(r => `<li>${r.name}</li>`).join("")}</ul>`;
-    right.innerHTML = `<div>${repoList.map(repo => {
-      const r = stats.find(s => s.name === repo.name);
-      if (!r || (isEmpty(r.views) && isEmpty(r.clones) && isEmpty(r.referrers))) return '';
-      return `<h3 class="mt-4 mb-1 pb-1 border-secondary border-bottom">${r.name}</h3>${["views", "clones", "referrers"].map(a => createStatsTable(a, r)).join("")}`;
+    left.innerHTML = `<h3 class="mt-4 mb-1 pb-1 border-secondary border-bottom">Repo List</h3><ul>${repoList.map(r => `<li>${getRepoAnchor(r)}</li>`).join("")}</ul>`;
+    right.innerHTML = `${ReposSummary.render()}<div>${repoList.map(repo => {
+      const repoStats = stats.find(s => s.name === repo.name);
+      const { name, views, clones, referrers } = repoStats;
+      if (!repoStats || (isEmpty(views) && isEmpty(clones) && isEmpty(referrers))) return '';
+      return (
+        `<h3 class="mt-4 mb-1 pb-1 border-secondary border-bottom"><a name="${name}"></a>${getRepoLink(repoStats, user)}</h3>
+        ${["views", "clones", "referrers"].map(a => createStatsTable(a, repoStats)).join("")}`
+      );
     }).join("")}</div>`;
   };
 
@@ -53,6 +59,9 @@ const app = (() => {
   };
   
   return {
+    "render": render,
+    "getRepos": () => repos,
+    "getStats": () => stats,
     "reload": () => GithubApi.getUser(userData => {
       if (!userData) {
         alert("You need to login to Github first!");
