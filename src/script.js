@@ -39,7 +39,7 @@ window["app"] = (() => {
     left.innerHTML = `<h3 class="mt-4 mb-1 pb-1 border-secondary border-bottom">Repo List</h3><ul>${repoList.map(r => `<li>${getRepoAnchor(r)}</li>`).join("")}</ul>`;
     right.innerHTML = `${ReposSummary.render()}<div>${repoList.map(repo => {
       const repoStats = stats.find(s => s.name === repo.name);
-      const { name, views, clones, referrers } = repoStats;
+      const { name, views, clones, referrers } = repoStats || {};
       if (!repoStats || (isEmpty(views) && isEmpty(clones) && isEmpty(referrers))) return '';
       return (
         `<h3 class="mt-4 mb-1 pb-1 border-secondary border-bottom"><a name="${name}"></a>${getRepoLink(repoStats, user)}</h3>
@@ -75,10 +75,11 @@ window["app"] = (() => {
         const promises = [];
         for (const repo of reposData.filter(r => !r.private)) {
           const { name } = repo;
-          let repoStats = stats.find(s => s.name === name) || { name };
-          promises.push(new Promise(res => GithubApi.getAllRepoStats(repoStats, statsData => res(statsData))));
+          let statsRepo = stats.find(s => s.name === name) || { name };
+          promises.push(new Promise(res => GithubApi.getAllRepoStats(statsRepo).then(statsData => res(statsData))));
         }
         Promise.all(promises).then(data => {
+          console.log(data);
           for (const statData of data) {
             if (stats.find(s => s.name === statData.name)) {
               stats = stats.map(s => s.name === statData.name ? statData : s);

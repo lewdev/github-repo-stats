@@ -34,6 +34,8 @@ const GithubApi = (() => {
     .then(r => {if (r.message) alert(r.message); return r;})
     .catch(error => err.innerHTML = error)
   ;
+
+  const doPromise = method => new Promise(resolve => method().then(resolve));
   const handleCb = (data, cb) => {
     if (cb) cb(data);
     return data;
@@ -66,33 +68,32 @@ const GithubApi = (() => {
       ))
       .then(data => handleCb(data, cb))
     ,
-    // const getRepo = (repo, cb) => get(`/repos/${username}/${repo}`).then(data => handleCb(data, cb)),
-    getTraffic: (repo, cb) => get(`/repos/${username}/${repo}/traffic/views`).then(data => handleCb(data, cb)),
-    getClones: (repo, cb) => get(`/repos/${username}/${repo}/traffic/clones`).then(data => handleCb(data, cb)),
-    getReferrers: (repo, cb) => get(`/repos/${username}/${repo}/traffic/popular/referrers`).then(data => handleCb(data, cb)),
-    getAllRepoStats: (repo, cb) => {
+    // const getRepo = repoName => get(`/repos/${username}/${repo}`).then(data => handleCb(data, cb)),
+    getTraffic: repoName => get(`/repos/${username}/${repoName}/traffic/views`),
+    getClones: repoName => get(`/repos/${username}/${repoName}/traffic/clones`),
+    getReferrers: repoName => get(`/repos/${username}/${repoName}/traffic/popular/referrers`),
+    getAllRepoStats: repo => {
       if (!repo) return;
       const { name } = repo;
       const { getTraffic, applyStats, getClones, getReferrers } = GithubApi;
-      getTraffic(name, data => {
-        if (!data) return;
-        applyStats(repo, "views", data, "timestamp");
-        getClones(name, data => {
-          applyStats(repo, "clones", data, "timestamp");
-          getReferrers(name, data => {
-            applyStats(repo, "referrers", data, "referrer");
-            handleCb(data, cb);
-          });
-        });
-      });
+      return getTraffic(name).then(trafficData => {
+        applyStats(repo, "views", trafficData, "timestamp");
+      })
+      .then(() => getClones(name).then(clonesData => {
+        applyStats(repo, "clones", clonesData, "timestamp");
+      }))
+      .then(() => getReferrers(name).then(referrersData => {
+        applyStats(repo, "referrers", referrersData, "referrer");
+        return referrersData;
+      }));
     },
     applyStats: (repo, attr, data, baseAttr) => {
       const isReferrers = attr === "referrers";
-      const arr = isReferrers ? data : data[attr];
-      if (!repo[attr]) repo[attr] = arr;
+      const dayArr = (isReferrers ? data : data[attr]) || [];
+      if (!repo[attr]) repo[attr] = dayArr;
       else {
         //merge: find and replace or add
-        for (const row of arr) {
+        for (const row of dayArr) {
           const found = repo[attr].find(v => v[baseAttr] === row[baseAttr]);
           if (found) {
             if (!isReferrers) {
@@ -104,6 +105,7 @@ const GithubApi = (() => {
           else repo[attr].push(row);
         }
       }
+      return repo; 
     }
   };
 })();
